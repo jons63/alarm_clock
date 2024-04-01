@@ -2,9 +2,21 @@
 #include <TimeLib.h>
 #include <SoftwareSerial.h>
 
-#include "SevSeg.h"
+#include "SevSegShift.h"
 
-SevSeg sevseg; 
+#define SHIFT_PIN_DS   2 /* Data input PIN */
+#define SHIFT_PIN_STCP 3 /* Shift Register Storage PIN */
+#define SHIFT_PIN_SHCP 4 /* Shift Register Shift PIN */
+
+//Instantiate a seven segment controller object (with Shift Register functionality)
+SevSegShift sevsegshift(
+                  SHIFT_PIN_DS, 
+                  SHIFT_PIN_SHCP, 
+                  SHIFT_PIN_STCP, 
+                  1, /* number of shift registers */
+                  true /* Digits are connected to Arduino directly */
+                );
+
 SoftwareSerial softSerial(/*rx =*/10, /*tx =*/11);
 #define FPSerial softSerial
 DFRobotDFPlayerMini myDFPlayer;
@@ -70,7 +82,7 @@ class ToggleButton : public Button {
   ToggleButton(unsigned int pin) : Button(pin) {};
   void normal_action() override {
     Serial.println("Normal");
-    sevseg.setNumber(0, 2);
+    sevsegshift.setNumber(0, 2);
     mode = Mode::Settings;
   }
 
@@ -92,15 +104,16 @@ void setupLogic() {
 void setupDisplay() {
   setTime(0,0,0,0,0,0);
   byte numDigits = 4;
-  byte digitPins[] = {10, 11, 12, 13};
-  byte segmentPins[] = {9, 2, 3, 5, 6, 8, 7, 4};
+  byte digitPins[] = {5, 6, 7, 8};
+  byte segmentPins[] = {6, 0, 2, 4, 5, 7, 1, 3};
   bool resistorsOnSegments = false;
   bool updateWithDelays = false;
   bool leadingZeros = true;
   byte hardwareConfig = COMMON_CATHODE;
+  bool disableDecPoint = false;
 
-  sevseg.begin(hardwareConfig, numDigits, digitPins, segmentPins, resistorsOnSegments, updateWithDelays, leadingZeros);
-  sevseg.setBrightness(90);
+  sevsegshift.begin(hardwareConfig, numDigits, digitPins, segmentPins, resistorsOnSegments, updateWithDelays, leadingZeros, disableDecPoint);
+  sevsegshift.setBrightness(20);
 }
 
 void setupAudio() {
@@ -158,7 +171,7 @@ void display() {
   m = m * 100;
   int s = second(t);  
 
-  sevseg.setNumber(m+s, 2);
+  sevsegshift.setNumber(m+s, 2);
   /*
   if (logic()) {
     val +=1;
@@ -189,15 +202,15 @@ void check_input(){
 }
 
 void loop(){
-  check_input();
-  if (mode == Mode::Normal) {
+  //check_input();
+  //if (mode == Mode::Normal) {
   display();  
   //audio();
-  } else if (mode == Mode::Settings) {
+  //} else if (mode == Mode::Settings) {
     //settings();
-  }
+  //}
 
-  sevseg.refreshDisplay(); 
+  sevsegshift.refreshDisplay(); 
 }
 
 void printDetail(uint8_t type, int value){
