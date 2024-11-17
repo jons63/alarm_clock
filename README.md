@@ -16,3 +16,9 @@ Below is the wiring for the display + one button for incrementing the value show
 ## Display with shift register
 A seven segment display require a lot of pins to operate, twelve for a display with four digits. To get around this I use a shift register to only use seven pins on the arduino instead of twelve.
 ![display with shift register](res/display_with_shift_register.png)
+But even when using a shift register the amount of digital pins on one Arduino Uno is not enough when adding the MP3 player and buttons. Also, when adding logic to handle button presses and the alarm functionality the update frequence of the display gets low enough for it to be visibly flickering. To combat this I will add another Arduino Uno that will only refresh the display and the second arduino will handle the logic. They will use i2c communication to change what time should be displayed and other functoin that might be needed.
+
+## Dual Arduino Uno with i2c communication. 
+i2c is an easy communication interface with good Arduino support from the Wire library. I copied a simple example of i2c communication between two Arduinos to test it out.
+![Minimal Arduino i2c example](res/i2c_example.png)
+
