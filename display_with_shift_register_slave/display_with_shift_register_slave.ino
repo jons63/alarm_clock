@@ -6,8 +6,14 @@
 #define SHIFT_PIN_STCP 3 /* Shift Register Storage PIN */
 #define SHIFT_PIN_SHCP 4 /* Shift Register Shift PIN */
 
+#define COMMAND_SET_TIME       0
+#define COMMAND_SET_BRIGHTNESS 1
+
+#define COMNAND_GET_TIME       0
+
+
 bool commandReady{false};
-unsigned int commandArray[255] = {0};
+byte commandArray[255] = {0};
 //Instantiate a seven segment controller object (with Shift Register functionality)
 SevSegShift sevsegshift(
                   SHIFT_PIN_DS, 
@@ -36,12 +42,15 @@ void setup() {
   Serial.begin(9600);
   Serial.println("This is the start of the program");
   Wire.begin(8);                // join i2c bus with address #8
-  Wire.onRequest(receiveEvent); // register event
+  Wire.onReceive(receiveEvent); // register event
+  Wire.onRequest(requestEvent); // register event
   setupDisplay();
 }
 
 void display() {
+  // time_t == unsinged long == 4 bytes == 32 bits
   time_t t = now();
+  // int == 2 bytes == 16 bits
   int m = minute(t);
   m = m * 100;
   int s = second(t);  
@@ -50,7 +59,18 @@ void display() {
 }
 
 void processCommand() {
-
+  switch (commandArray[0]) {
+    case COMMAND_SET_TIME:
+      time_t t = (unsigned long)commandArray[1] <<  24 | 
+                 (unsigned long)commandArray[2] <<  16 | 
+                 (unsigned long)commandArray[3] <<  8 | 
+                 (unsigned long)commandArray[4];
+      setTime(t);
+      break;
+    case COMMAND_SET_BRIGHTNESS:
+      break;
+  }
+  commandReady = false;
 }
 
 void loop() {
@@ -64,9 +84,21 @@ void loop() {
 // function that executes whenever data is received from master
 // this function is registered as an event, see setup()
 void receiveEvent(int howMany) {
-  unsigned int index = 0;
-  while(Wire.available()) {
-    commandArray[index++] = Wire.read();
+  if (!commandReady) {
+    unsigned int index = 0;
+    while(Wire.available()) {
+      // Wire.read() reads one byte of data
+      commandArray[index++] = Wire.read();
+    }
+    commandReady = true;
   }
-  commandReady = true;
+}
+
+// function that executes whenever data is requested by master
+// this function is registered as an event, see setup()
+void requestEvent() {
+  time_t t = now();
+  byte data[4] = {t >> 24, t >> 16, t >> 8, t};
+  Wire.write(data, 4); // respond with message of 4 bytes, the current time
+                       // as expected by master
 }
