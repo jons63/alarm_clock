@@ -10,11 +10,14 @@ const int kTimeout = 500;
 
 enum class Mode : unsigned int {
   Normal = 0,
-  Settings = 1,
+  TimeMinutes = 1,
+  TimeHours = 2,
+  Brightness = 3,
 };
 
 time_t t_{now()};
 Mode mode_{Mode::Normal};
+unsigned int brightness_{20};
 
 class Button {
   public:
@@ -42,17 +45,32 @@ class Button {
 };
 
 void ActionFunction() {
-  if (mode_ == Mode::Settings) {
+  if (mode_ == Mode::TimeMinutes) {
     t_ += 1;
     setTime(t_);
     SendTime(t_);
+  } else if (mode_ == Mode::TimeHours) {
+    t_ += 60;
+    setTime(t_);
+    SendTime(t_);
+  } else if (mode_ == Mode::Brightness) {
+    if (brightness_ >= 100) {
+      brightness_ = 0;
+    } else {
+      brightness_ += 10;
+    }
+    SendBrightness(brightness_);
   }
 }
 
 void ModeFunction() {
   if (mode_ == Mode::Normal) {
-    mode_ = Mode::Settings;
-  } else {
+    mode_ = Mode::TimeMinutes;
+  } else if (mode_ == Mode::TimeMinutes) {
+    mode_ = Mode::TimeHours;
+  } else if (mode_ == Mode::TimeHours) {
+    mode_ = Mode::Brightness;
+  }else if (mode_ == Mode::Brightness) {
     mode_ = Mode::Normal;
   }
   Serial.print("ModeFunction, mode:");
@@ -90,15 +108,18 @@ void SendTime(time_t t) {
   Wire.endTransmission();  
 }
 
-unsigned long x{0};
-
+void SendBrightness(byte brightness) {
+  Wire.beginTransmission(8); 
+  Wire.write(1);
+  Wire.write(brightness);
+  Wire.endTransmission();  
+}
 
 void loop(){
   time_t t = now();
   if ((mode_ == Mode::Normal) && (t - t_ > 0)) {
     SendTime(t);
     t_ = t;
-  }
-  
+  }  
   CheckInput();
 }

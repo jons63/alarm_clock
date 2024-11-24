@@ -12,9 +12,9 @@
 
 #define COMNAND_GET_TIME       0
 
-
 bool commandReady{false};
 byte commandArray[255] = {0};
+unsigned int brightness_{0};
 //Instantiate a seven segment controller object (with Shift Register functionality)
 SevSegShift sevsegshift(
                   SHIFT_PIN_DS, 
@@ -50,17 +50,18 @@ void setup() {
 }
 
 void processCommand() {
-  switch (commandArray[0]) {
+  switch(commandArray[0]) {
     case COMMAND_SET_TIME:
-      time_t t = (unsigned long)commandArray[1] <<  24 | 
-                 (unsigned long)commandArray[2] <<  16 | 
-                 (unsigned long)commandArray[3] <<  8 | 
-                 (unsigned long)commandArray[4];
+      time_t t;
+      t = (unsigned long)commandArray[1] <<  24 | 
+          (unsigned long)commandArray[2] <<  16 | 
+          (unsigned long)commandArray[3] <<  8  | 
+          (unsigned long)commandArray[4];
       sevsegshift.setNumber(t, 2);
       break;
     case COMMAND_SET_BRIGHTNESS:
-      break;
-    case COMMAND_SETTINGS_MODE:
+      //unsigned int brightness = (unsigned int)commandArray[1];
+      sevsegshift.setBrightness(commandArray[1]);
       break;
   }
   commandReady = false;
