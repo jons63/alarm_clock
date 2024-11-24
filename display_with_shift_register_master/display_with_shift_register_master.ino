@@ -3,7 +3,18 @@
 
 unsigned long lastButtonPressTime = 0;
 // Wait time in ms between two button presses
-const int kTimeout = 100;
+const int kTimeout = 500;
+
+#define SETTINGS 2
+#define ACTION   3
+
+enum class Mode : unsigned int {
+  Normal = 0,
+  Settings = 1,
+};
+
+time_t t_{now()};
+Mode mode_{Mode::Normal};
 
 class Button {
   public:
@@ -13,7 +24,7 @@ class Button {
       int new_state = digitalRead(pin_);
       if (new_state != last_state_ && new_state == LOW) {
         last_state_ = new_state;
-        action();
+        func_();
         time_ = millis();
       } else if (new_state != last_state_ && new_state == HIGH) {
         last_state_ = new_state;
@@ -23,10 +34,6 @@ class Button {
     }
   };
 
-  void action() {
-    func_();
-  };
-
   private:
     unsigned long time_{0};
     int last_state_{HIGH};
@@ -34,71 +41,64 @@ class Button {
     void (*func_)();
 };
 
-void TestFunc() {
-    Wire.requestFrom(8, 4);
-    byte arr[5];
-    unsigned int index = 0;
-    while (Wire.available()) {
-      arr[index++] = Wire.read();
-    }
-    time_t t = (unsigned long)arr[0] << 26 | 
-               (unsigned long)arr[1] << 16 | 
-               (unsigned long)arr[2] << 8 | 
-               (unsigned long)arr[3];
-    t += SECS_PER_MIN;
-    arr[0] = 0;       // command type
-    arr[1] = t >> 24; // data
-    arr[2] = t >> 16; // data
-    arr[3] = t >> 8;  // data
-    arr[4] = t;       // data
-    Wire.beginTransmission(8);
-    Wire.write(arr, 5);
-    Wire.endTransmission();
-    Serial.println("Temp function");
+void ActionFunction() {
+  if (mode_ == Mode::Settings) {
+    t_ += 1;
+    setTime(t_);
+    SendTime(t_);
+  }
 }
 
-Button btn(1, &TestFunc);
+void ModeFunction() {
+  if (mode_ == Mode::Normal) {
+    mode_ = Mode::Settings;
+  } else {
+    mode_ = Mode::Normal;
+  }
+  Serial.print("ModeFunction, mode:");
+  Serial.println((int)mode_);
+}
+
+Button btn(SETTINGS, &ModeFunction);
+Button btn2(ACTION, &ActionFunction);
 
 void setup(){
   Serial.begin(9600);
   Wire.begin();
+  pinMode(SETTINGS, INPUT_PULLUP);
+  pinMode(ACTION, INPUT_PULLUP); 
   Serial.println("This is the start of the program");
 }
 
-void check_input(){
+void CheckInput(){
   btn();
+  btn2();
 }
 
-unsigned long x = 0;
-
-void loop(){
-  // Write time to slave arduino
-  
+// time_t == unsinged long == 4 bytes == 32 bits
+void SendTime(time_t t) {
+  int s = second(t);
+  int m = minute(t);
+  m = m * 100;
+  t = m+s;
   Wire.beginTransmission(8); 
   Wire.write(0);
-  Wire.write(x>>24);
-  Wire.write(x>>16);
-  Wire.write(x>>8);
-  Wire.write(x);
-  Wire.endTransmission();   
-  x += 60;
-  delay(2000);
+  Wire.write(t>>24);
+  Wire.write(t>>16);
+  Wire.write(t>>8);
+  Wire.write(t);
+  Wire.endTransmission();  
+}
+
+unsigned long x{0};
+
+
+void loop(){
+  time_t t = now();
+  if ((mode_ == Mode::Normal) && (t - t_ > 0)) {
+    SendTime(t);
+    t_ = t;
+  }
   
-  /*
-  // Read time from slave arduino
-  Wire.requestFrom(8, 4);    // request 6 bytes from peripheral device #8
-  byte commandArray[255] = {0};
-  unsigned int index = 0;
-    while (Wire.available()) { // peripheral may send less than requested
-      commandArray[index++] = Wire.read(); // receive a byte as character
-    }
-    time_t t = (unsigned long)commandArray[0] <<  24 | 
-                 (unsigned long)commandArray[1] <<  16 | 
-                 (unsigned long)commandArray[2] <<  8 | 
-                 (unsigned long)commandArray[3];
-    Serial.print(minute(t));
-    Serial.print(":");
-    Serial.println(second(t));
-    delay(1000);
-    */
+  CheckInput();
 }

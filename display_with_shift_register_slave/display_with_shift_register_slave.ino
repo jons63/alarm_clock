@@ -8,6 +8,7 @@
 
 #define COMMAND_SET_TIME       0
 #define COMMAND_SET_BRIGHTNESS 1
+#define COMMAND_SETTINGS_MODE  2
 
 #define COMNAND_GET_TIME       0
 
@@ -36,6 +37,7 @@ void setupDisplay() {
 
   sevsegshift.begin(hardwareConfig, numDigits, digitPins, segmentPins, resistorsOnSegments, updateWithDelays, leadingZeros, disableDecPoint);
   sevsegshift.setBrightness(20);
+  sevsegshift.setNumber(0, 2);
 }
 
 void setup() {
@@ -47,17 +49,6 @@ void setup() {
   setupDisplay();
 }
 
-void display() {
-  // time_t == unsinged long == 4 bytes == 32 bits
-  time_t t = now();
-  // int == 2 bytes == 16 bits
-  int m = minute(t);
-  m = m * 100;
-  int s = second(t);  
-
-  sevsegshift.setNumber(m+s, 2);
-}
-
 void processCommand() {
   switch (commandArray[0]) {
     case COMMAND_SET_TIME:
@@ -65,16 +56,17 @@ void processCommand() {
                  (unsigned long)commandArray[2] <<  16 | 
                  (unsigned long)commandArray[3] <<  8 | 
                  (unsigned long)commandArray[4];
-      setTime(t);
+      sevsegshift.setNumber(t, 2);
       break;
     case COMMAND_SET_BRIGHTNESS:
+      break;
+    case COMMAND_SETTINGS_MODE:
       break;
   }
   commandReady = false;
 }
 
 void loop() {
-  display();  
   sevsegshift.refreshDisplay();
   if (commandReady) {
     processCommand();
